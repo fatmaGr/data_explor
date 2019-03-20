@@ -1,0 +1,126 @@
+from scipy import stats
+import numpy as np
+import matplotlib.pyplot as plt
+import math
+
+# '---------- Read Data ----------'
+import xlrd
+ 
+from xlwt import Workbook, Formula
+ 
+path = r"C:\chemin\vers\fichier.xls"
+
+# Réouverture du classeur
+classeur = xlrd.open_workbook(path)
+ 
+# Récupération du nom de toutes les feuilles sous forme de liste
+nom_des_feuilles = classeur.sheet_names()
+ 
+# Récupération de la première feuille
+feuille = classeur.sheet_by_name(nom_des_feuilles[0])
+ 
+print u"Lecture des cellules:"
+print "A1: {}".format(feuille.cell_value(0, 0))
+print "B1: {}".format(feuille.cell_value(0, 1))
+# On ne peut pas lire les les valeurs des cellules avec formules
+print "C1: {}".format(feuille.cell_value(0, 2))
+
+# sinon fichier txt 
+Taille, Poids = np.loadtxt("data.txt", unpack=True, skiprows=1)
+Taille = np.sort(Taille)
+
+# '---------- Print Descriptive statistics: Continuous Case ----------'
+
+print Taille
+print 'Taille Dim: ', Taille.shape
+print 'mean', np.mean(Taille)
+print 'std', np.std(Taille)
+print 'std (unbiased): ', np.std(Taille, ddof=1)
+print 'Median: ', np.median(Taille)
+print 'Max and Min Value: ', max(Taille), min(Taille)
+print 'Range: ', max(Taille) - min(Taille)
+print 'Mode: ', stats.mode(Taille,axis=0)
+print 'First quartile: ', stats.scoreatpercentile(Taille, 25)
+print 'Second quartile: ', stats.scoreatpercentile(Taille, 50)
+print 'Third quartile: ', stats.scoreatpercentile(Taille, 75)
+
+# '---------- Discrete Case ----------'
+
+NbData = Taille.shape[0]
+NbClass = 4 #int( math.log(NbData,2) ) + 1
+Range = max(Taille) - min(Taille)
+ClassRange = float( Range ) / NbClass
+
+print 'NbData: ', NbData
+print 'NbClass: ', NbClass
+print 'ClassRange: ', ClassRange
+
+X = np.arange(NbClass)
+AbsoluteFrequency = np.zeros(NbClass)
+for i in np.arange(NbData-1):
+    c = int((Taille[i]-min(Taille))/ClassRange) 
+    AbsoluteFrequency[c] = AbsoluteFrequency[c] + 1
+AbsoluteFrequency[NbClass-1] = AbsoluteFrequency[NbClass-1] + 1
+
+ClassLabel = []
+j = round(min(Taille),2)
+for i in np.arange(NbClass+1):
+    ClassLabel.append(j)
+    j = round(j + ClassRange,2)
+LabelList = (ClassLabel)
+x_pos = np.arange(len(LabelList))
+
+# '---------- Plot Absolute Frequency Histogram ----------'
+
+fig = plt.figure()
+plt.xticks(x_pos, LabelList,rotation=45)
+plt.ylabel(r'Absolute Frequency $n_i$')
+bar1 = plt.bar(X,AbsoluteFrequency,\
+       width=1.0,bottom=0,color='Green',alpha=0.65,label='Legend')
+plt.savefig('Histogram.png', bbox_inches='tight')
+plt.show()
+
+RelativeFrequency = np.zeros(NbClass)
+RelativeFrequency = AbsoluteFrequency / NbData
+
+# '---------- Plot Cumulative distribution function ----------'
+
+CumulativeFrequency = np.zeros(NbClass)
+CumulativeFrequency_xStart = np.zeros(NbClass)
+CumulativeFrequency_xEnd = np.zeros(NbClass)
+j = 0 
+k = 0
+for i in np.arange(NbClass):
+    CumulativeFrequency[i] = j + RelativeFrequency[i]
+    j = j + RelativeFrequency[i]
+    CumulativeFrequency_xStart[i] = k
+    CumulativeFrequency_xEnd[i] = k + 1
+    k += 1
+
+fig = plt.figure()
+for i in np.arange(NbClass):
+    plt.plot([CumulativeFrequency_xStart[i],CumulativeFrequency_xEnd[i]], \
+    [CumulativeFrequency[i],CumulativeFrequency[i]], 'k--')
+    if i < NbClass - 1:
+        plt.scatter(CumulativeFrequency_xEnd[i], CumulativeFrequency[i], \
+        s=80, facecolors='none', edgecolors='r')
+    if i == 0:
+        plt.plot([CumulativeFrequency_xStart[i],CumulativeFrequency_xEnd[i]], \
+        [0,CumulativeFrequency[i]], 'r--')
+    else:
+        plt.plot([CumulativeFrequency_xStart[i],CumulativeFrequency_xEnd[i]], \
+        [CumulativeFrequency[i-1],CumulativeFrequency[i]], 'r--')    
+plt.xlim(0,NbClass)
+plt.ylim(0,1)
+plt.xticks(x_pos, LabelList,rotation=45)
+plt.title("Cumulative Distribution Function")
+plt.savefig('CumulativeDistributionFunction.png', bbox_inches='tight')
+plt.show()
+
+# '---------- Plot Box Plot ----------'
+
+fig = plt.figure()
+plt.xticks([0], ['Taille'])
+plt.boxplot(Taille)
+plt.savefig('BoxPlot.png', bbox_inches='tight')
+plt.show()
